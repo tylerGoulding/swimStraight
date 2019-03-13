@@ -4,8 +4,8 @@
 
 #define HWSERIAL Serial1
 
-#define MARGIN_RANGE 5 //todo
-#define DELTA_DEGREE 15//todo
+#define MARGIN_RANGE 10 //todo
+#define DELTA_DEGREE 5//todo
 
 #define ONBOARD_LED 13
 
@@ -21,7 +21,10 @@
 
 
 // hexagon around
-const float currentPath[] ={40.44306,-79.93847,40.44292,-79.93884,40.4426,-79.93875,40.44262,-79.93834,40.44289,-79.93817,40.44306,-79.93847};
+//const float currentPath[] ={40.44306,-79.93847,40.44292,-79.93884,40.4426,-79.93875,40.44262,-79.93834,40.44289,-79.93817,40.44306,-79.93847};
+const float currentPath[] ={40.44291,-79.94242,40.44296,-79.94266,40.44278,-79.94298};
+
+
 const int sizeOfCurrentPath = 6;
  //  the below path is for disc golf course for when we are board
  // {40.43063F, -79.94538F, 40.43069F, -79.94652F, 40.43144F, -79.94668F, 40.43206F, -79.94578F};
@@ -45,8 +48,8 @@ float currentStartLat = 0;
  float currentEndLat = 0;
  float currentEndLong = 0;
 
-bool at_start = false;
-
+boolean at_start = false;
+boolean pG = false;
 void setup() {
   // put your setup code here, to run once:
   pinMode(ONBOARD_LED, OUTPUT);
@@ -70,6 +73,7 @@ void setup() {
   currentEndLat = currentPath[getLatIndex(currentEndPos)];
   currentEndLong = currentPath[getLongIndex(currentEndPos)];
   Serial.println("Leaving Start");
+//  delay(5000);
 
 }
 
@@ -86,7 +90,11 @@ void loop() {
 //
 //  // first we gotta make sure that the GPS has SATs before we can begin to do anything
   if (GPS.fix){
-    Serial.println("you gucci");
+//    if (pG){
+//          Serial.println("you gucci");
+//      pG = false;
+//    }
+//    Serial.println("you gucci");
 //
 //    // visual feeback that we have a fix
 //    digitalWrite(ONBOARD_LED, HIGH);
@@ -102,34 +110,42 @@ void loop() {
     float GPS_long_shifting = GPS.longitude - (GPS_long_integer * 100);
     float GPS_long_decimal_conversion = (GPS_long_shifting / 60);
     float curr_GPS_long = (-1)*(GPS_long_integer + GPS_long_decimal_conversion);
-    Serial.print(curr_GPS_lat);
-    Serial.print(", ");
-    Serial.print(curr_GPS_long);
+//    Serial.print(curr_GPS_lat);
+//    Serial.print(", ");
+//    Serial.println(curr_GPS_long);
 
-    if (~at_start) {
+    if (at_start == false) {
       //something
-      Serial.println("checking if we should begin");
+      Serial.println("checking");
       at_start = toBegin(curr_GPS_lat, curr_GPS_long);
+      if (at_start == true){
+        Serial.print("we are within ");
+        Serial.print(MARGIN_RANGE);
+        Serial.println(" meters of start");
+      }
     } else {
-      Serial.println("False Trigger");
-//      // TODO: implement 'rings' of how often to check if we should update start and end previousPositions
-//      //       e.g. if we calculate were 400 meters away from end, we dont need to check if we are 5 meters away every time.
-//      //            we dont move that quick, yo
-//      if (finished){
-//        Serial.printf("bruh, you are done.");
-//        exit(0);
-//      }
+      // TODO: implement 'rings' of how often to check if we should update start and end previousPositions
+      //       e.g. if we calculate were 400 meters away from end, we dont need to check if we are 5 meters away every time.
+      //            we dont move that quick, yo
+      if (finished){
+        Serial.printf("bruh, you are done.");
+        exit(0);
+      }
 //      updateStartAndEnd(curr_GPS_lat, curr_GPS_long);
-//      int relative_pos = toMove(curr_GPS_lat, curr_GPS_long);
-//      if (relative_pos < 0) {
-//        Serial.print("move left");
-//      } else if (relative_pos > 0) {
-//        Serial.print("move right");
-//      } else {
-//        Serial.print("on path");
-//      }
+      float relative_pos = toMove(curr_GPS_lat, curr_GPS_long)+180;
+      Serial.println(relative_pos);
+      if (relative_pos < -DELTA_DEGREE) {
+        Serial.println("move right");
+      } else if (relative_pos > DELTA_DEGREE) {
+        Serial.println("move left");
+      } else {
+        Serial.println("on path");
+      }
     }
 //    shiftandAddPosition(previousPositions, sizeOfpreviousPositions, curr_GPS_lat, curr_GPS_long);
+  }
+  else{
+    Serial.println("looking for fix");
   }
 
 }
@@ -185,19 +201,20 @@ bool toBegin(float curr_lat, float curr_long) {
   }
 }
 
-int toMove(float curr_lat, float curr_long) {
+float toMove(float curr_lat, float curr_long) {
   //populate array of current two points, not sure how we'll keep track yet
   float angle = calcDir(curr_lat, curr_long, currentStartLat, currentStartLong,
    currentEndLat, currentEndLong);
-  if (abs(angle) < DELTA_DEGREE) {
-    return 0;
-  } else {
-    if (angle > 0) {
-      return -1;
-    } else {
-      return 1;
-    }
-  }
+   return angle;
+//  if (abs(angle) < DELTA_DEGREE) {
+//    return 0;
+//  } else {
+//    if (angle > 0) {
+//      return -1;
+//    } else {
+//      return 1;
+//    }
+//  }
 }
 
 inline int getLatIndex(int index){
