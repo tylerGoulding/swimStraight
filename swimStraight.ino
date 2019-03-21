@@ -5,6 +5,9 @@
 #define HWSERIAL Serial1
 
 #define MARGIN_RANGE 10 //todo
+#define RANGE_RING_1 100 
+#define RANGE_RING_2 50
+#define RANGE_RING_3 25
 #define DELTA_DEGREE 5//todo
 
 #define ONBOARD_LED 13
@@ -21,8 +24,8 @@
 
 
 // hexagon around
-//const float currentPath[] ={40.44306,-79.93847,40.44292,-79.93884,40.4426,-79.93875,40.44262,-79.93834,40.44289,-79.93817,40.44306,-79.93847};
-const float currentPath[] ={40.44291,-79.94242,40.44296,-79.94266,40.44278,-79.94298};
+//const float current                                                                                                                                                                                                                                                           Path[] ={40.44306,-79.93847,40.44292,-79.93884,40.4426,-79.93875,40.44262,-79.93834,40.44289,-79.93817,40.44306,-79.93847};
+const float currentPath[] ={40.44462,-79.94567,40.44472,-79.94404};
 
 
 const int sizeOfCurrentPath = 6;
@@ -37,6 +40,7 @@ const int sizeOfpreviousPositions = 3;
 
 Adafruit_GPS GPS(&HWSERIAL);
 IntervalTimer myTimer;
+IntervalTimer freqTimer;
 
 
 static int finished = 0;
@@ -47,6 +51,8 @@ float currentStartLat = 0;
  float currentStartLong = 0;
  float currentEndLat = 0;
  float currentEndLong = 0;
+ float curr_GPS_lat = 0;
+ float curr_GPS_long = 0;
 
 boolean at_start = false;
 boolean pG = false;
@@ -63,6 +69,8 @@ void setup() {
   setupGPS();
   Serial.println("Done");
   at_start = false;
+  
+  freqTimer.begin(updateStartAndEnd, 20000000);
 
   /* Lets set current start and end lat,long*/
     Serial.println("getting current lat and long");
@@ -103,20 +111,23 @@ void loop() {
     int GPS_lat_integer = GPS.latitude/100;
     float GPS_lat_shifting = GPS.latitude - (GPS_lat_integer * 100);
     float GPS_lat_decimal_conversion = (GPS_lat_shifting / 60);
-    float curr_GPS_lat = GPS_lat_integer + GPS_lat_decimal_conversion;
+    curr_GPS_lat = GPS_lat_integer + GPS_lat_decimal_conversion;
 
     // Longitude conversion
     int GPS_long_integer = GPS.longitude/100;
     float GPS_long_shifting = GPS.longitude - (GPS_long_integer * 100);
     float GPS_long_decimal_conversion = (GPS_long_shifting / 60);
-    float curr_GPS_long = (-1)*(GPS_long_integer + GPS_long_decimal_conversion);
-//    Serial.print(curr_GPS_lat);
-//    Serial.print(", ");
-//    Serial.println(curr_GPS_long);
+    curr_GPS_long = (-1)*(GPS_long_integer + GPS_long_decimal_conversion);
 
     if (at_start == false) {
       //something
-      Serial.println("checking");
+//      Serial.println("checking");
+//      Serial.print(curr_GPS_lat);
+//      Serial.print(", ");
+//      Serial.println(curr_GPS_long);
+
+      Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
+      
       at_start = toBegin(curr_GPS_lat, curr_GPS_long);
       if (at_start == true){
         Serial.print("we are within ");
@@ -131,7 +142,7 @@ void loop() {
         Serial.printf("bruh, you are done.");
         exit(0);
       }
-//      updateStartAndEnd(curr_GPS_lat, curr_GPS_long);
+      updateStartAndEnd();
       float relative_pos = toMove(curr_GPS_lat, curr_GPS_long)+180;
       Serial.println(relative_pos);
       if (relative_pos < -DELTA_DEGREE) {
@@ -174,8 +185,9 @@ return;
 //    // but only one character can be written at a time. 
 //}
 
-inline void updateStartAndEnd(float curr_lat, float curr_long) {
-  if (calcDist(currentStartLat, currentStartLong, curr_lat, curr_long) < MARGIN_RANGE) {
+void updateStartAndEnd() {
+
+  if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < MARGIN_RANGE) {
     /* update interm 'start' values */
     currentStartPos++;
     currentStartLat = currentEndLat;
@@ -189,8 +201,20 @@ inline void updateStartAndEnd(float curr_lat, float curr_long) {
     }
     else {
       finished = 1;
+      freqTimer.update(20000000);
     }
+  } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_3) {
+    freqTimer.update(2000000);
+    Serial.println("within 25 metres from goal");
+    
+  } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_2) {
+    freqTimer.update(5000000);
+    Serial.println("within 50 metres from goal");
+  } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_1) {
+    freqTimer.update(10000000);
+    Serial.println("within 100 metres from goal");
   }
+
 }
 
 bool toBegin(float curr_lat, float curr_long) {
