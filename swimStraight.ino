@@ -1,5 +1,5 @@
 #include <Adafruit_GPS.h>
-
+#include "IntervalTimer.h"
 #include "math.h"
 
 #define HWSERIAL Serial1
@@ -25,7 +25,7 @@
 
 // hexagon around
 //const float current                                                                                                                                                                                                                                                           Path[] ={40.44306,-79.93847,40.44292,-79.93884,40.4426,-79.93875,40.44262,-79.93834,40.44289,-79.93817,40.44306,-79.93847};
-const float currentPath[] ={40.44462,-79.94567,40.44472,-79.94404};
+const float currentPath[] ={40.44385,-79.94635,40.44378,-79.94598};
 
 
 const int sizeOfCurrentPath = 6;
@@ -74,8 +74,6 @@ void setup() {
 
   /* Lets set current start and end lat,long*/
     Serial.println("getting current lat and long");
-//    Serial.print("getLatIndex(currentStartPos)=");
-//    Serial.println(getLatIndex(currentStartPos));
   currentStartLat = currentPath[getLatIndex(currentStartPos)];
   currentStartLong = currentPath[getLongIndex(currentStartPos)];
   currentEndLat = currentPath[getLatIndex(currentEndPos)];
@@ -120,14 +118,7 @@ void loop() {
     curr_GPS_long = (-1)*(GPS_long_integer + GPS_long_decimal_conversion);
 
     if (at_start == false) {
-      //something
-//      Serial.println("checking");
-//      Serial.print(curr_GPS_lat);
-//      Serial.print(", ");
-//      Serial.println(curr_GPS_long);
-
       Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
-      
       at_start = toBegin(curr_GPS_lat, curr_GPS_long);
       if (at_start == true){
         Serial.print("we are within ");
@@ -142,7 +133,7 @@ void loop() {
         Serial.printf("bruh, you are done.");
         exit(0);
       }
-      updateStartAndEnd();
+//      updateStartAndEnd();
       float relative_pos = toMove(curr_GPS_lat, curr_GPS_long)+180;
       Serial.println(relative_pos);
       if (relative_pos < -DELTA_DEGREE) {
