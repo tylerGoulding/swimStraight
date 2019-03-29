@@ -8,8 +8,8 @@
 #define RANGE_RING_1 100 
 #define RANGE_RING_2 50
 #define RANGE_RING_3 25
-#define DELTA_DEGREE 5//todo
-
+#define DELTA_DEGREE 2                       //todo
+                                                                    
 #define ONBOARD_LED 13
 
 
@@ -135,7 +135,10 @@ void loop() {
       }
 //      updateStartAndEnd();
       float relative_pos = toMove(curr_GPS_lat, curr_GPS_long)+180;
+      Serial.print("Angle difference between actual and desired direction: ");
       Serial.println(relative_pos);
+      Serial.print("Total remaining distance to destination: ");
+      Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
       if (relative_pos < -DELTA_DEGREE) {
         Serial.println("move right");
       } else if (relative_pos > DELTA_DEGREE) {
