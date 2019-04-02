@@ -15,7 +15,7 @@ float to_degrees(float radians) {
 float getBearing(float lat1, float long1, float lat2, float long2){
   float y = sin(long2-long1) * cos(lat2);
   float x = cos(lat1)*sin(lat2) - sin(lat1)*cos(lat2)*cos(long2-long1);
-  float bearing = to_degrees(atan2(y, x));
+  float bearing = to_degrees(atan2(y, xv));
   return bearing;
 }
 
