@@ -5,11 +5,11 @@
 #define HWSERIAL Serial1
 
 #define MARGIN_RANGE 10 //todo
-#define RANGE_RING_1 100 
+#define RANGE_RING_1 100
 #define RANGE_RING_2 50
 #define RANGE_RING_3 25
-#define DELTA_DEGREE 2                       //todo
-                                                                    
+#define DELTA_DEGREE 1                       //todo
+
 #define ONBOARD_LED 13
 
 
@@ -46,13 +46,14 @@ IntervalTimer freqTimer;
 static int finished = 0;
 static int currentStartPos = 0;
 static int currentEndPos = 1;
+static int counter = 0;
 
 float currentStartLat = 0;
- float currentStartLong = 0;
- float currentEndLat = 0;
- float currentEndLong = 0;
- float curr_GPS_lat = 0;
- float curr_GPS_long = 0;
+float currentStartLong = 0;
+float currentEndLat = 0;
+float currentEndLong = 0;
+float curr_GPS_lat = 0;
+float curr_GPS_long = 0;
 
 boolean at_start = false;
 boolean pG = false;
@@ -69,7 +70,7 @@ void setup() {
   setupGPS();
   Serial.println("Done");
   at_start = false;
-  
+
   freqTimer.begin(updateStartAndEnd, 20000000);
 
   /* Lets set current start and end lat,long*/
@@ -79,8 +80,6 @@ void setup() {
   currentEndLat = currentPath[getLatIndex(currentEndPos)];
   currentEndLong = currentPath[getLongIndex(currentEndPos)];
   Serial.println("Leaving Start");
-//  delay(5000);
-
 }
 
 void loop() {
@@ -96,15 +95,8 @@ void loop() {
 //
 //  // first we gotta make sure that the GPS has SATs before we can begin to do anything
   if (GPS.fix){
-//    if (pG){
-//          Serial.println("you gucci");
-//      pG = false;
-//    }
-//    Serial.println("you gucci");
-//
-//    // visual feeback that we have a fix
-//    digitalWrite(ONBOARD_LED, HIGH);
-//
+    counter++;
+
     // Latitude conversion
     int GPS_lat_integer = GPS.latitude/100;
     float GPS_lat_shifting = GPS.latitude - (GPS_lat_integer * 100);
@@ -133,23 +125,30 @@ void loop() {
         Serial.printf("bruh, you are done.");
         exit(0);
       }
-//      updateStartAndEnd();
-      float relative_pos = toMove(curr_GPS_lat, curr_GPS_long)+180;
-      Serial.print("Angle difference between actual and desired direction: ");
-      Serial.println(relative_pos);
-      Serial.print("Total remaining distance to destination: ");
-      Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
-      if (relative_pos < -DELTA_DEGREE) {
-        Serial.println("move right");
-      } else if (relative_pos > DELTA_DEGREE) {
-        Serial.println("move left");
-      } else {
-        Serial.println("on path");
+      float relative_pos = toMove(curr_GPS_lat, curr_GPS_long);
+
+      if (counter == 10) {
+        counter = 0;
+        Serial.print("Remaining Distance: ");
+        Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
+        if (relative_pos > DELTA_DEGREE) {
+          Serial.print("move right: ");
+          Serial.println(relative_pos);
+
+        } else if (relative_pos < -DELTA_DEGREE) {
+          Serial.print("move left: ");
+          Serial.println(relative_pos);
+
+        } else {
+          Serial.println("on path");
+        }
       }
+
     }
-//    shiftandAddPosition(previousPositions, sizeOfpreviousPositions, curr_GPS_lat, curr_GPS_long);
-  }
-  else{
+    if (calcDist(previousPositions[2][0], previousPositions[2][1], curr_GPS_lat, curr_GPS_long)< 1) {
+      shiftandAddPosition(previousPositions, sizeOfpreviousPositions, curr_GPS_lat, curr_GPS_long);
+    }
+  } else {
     Serial.println("looking for fix");
   }
 
@@ -165,6 +164,8 @@ void setupGPS(){
   GPS.begin(9600);
   Serial1.begin(9600);
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  GPS.sendCommand(PMTK_API_SET_FIX_CTL_1HZ);
   myTimer.begin(readGPS, 1000);
 return;
 }
@@ -174,9 +175,9 @@ return;
 //  char c = GPS.read();
 //  // if you want to debug, this is a good time to do it!
 //  if (GPSECHO)
-//    if (c) UDR0 = c;  
-//    // writing direct to UDR0 is much much faster than Serial.print 
-//    // but only one character can be written at a time. 
+//    if (c) UDR0 = c;
+//    // writing direct to UDR0 is much much faster than Serial.print
+//    // but only one character can be written at a time.
 //}
 
 void updateStartAndEnd() {
@@ -200,7 +201,7 @@ void updateStartAndEnd() {
   } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_3) {
     freqTimer.update(2000000);
     Serial.println("within 25 metres from goal");
-    
+
   } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_2) {
     freqTimer.update(5000000);
     Serial.println("within 50 metres from goal");
@@ -221,18 +222,14 @@ bool toBegin(float curr_lat, float curr_long) {
 
 float toMove(float curr_lat, float curr_long) {
   //populate array of current two points, not sure how we'll keep track yet
-  float angle = calcDir(curr_lat, curr_long, currentStartLat, currentStartLong,
+
+  // benefits of fixed size arrays
+  float oldPositionLat = (previousPositions[0][0]+previousPositions[1][0]+previousPositions[2][0])/3;
+  float oldPositionLong = (previousPositions[0][1]+previousPositions[1][1]+previousPositions[2][1])/3;
+
+  float angle = calcDir(curr_lat, curr_long, oldPositionLat, oldPositionLong,
    currentEndLat, currentEndLong);
    return angle;
-//  if (abs(angle) < DELTA_DEGREE) {
-//    return 0;
-//  } else {
-//    if (angle > 0) {
-//      return -1;
-//    } else {
-//      return 1;
-//    }
-//  }
 }
 
 inline int getLatIndex(int index){
@@ -259,9 +256,25 @@ void shiftandAddPosition(float **a,int n, float flat, float flong){
  * //Function to calculate the distance between two waypoints
  *************************************************************************/
 float calcDir(float flat0, float flon0, float flat1, float flon1, float flat2, float flon2) {
-  float p1_to_p2 = getBearing(flat1, flon1, flat2, flon2);
-  float curr_to_p1 = getBearing(flat0, flon0, flat1, flon1);
-  float angle = p1_to_p2 - curr_to_p1;
+
+  float goal_bearing = getBearing(flat1, flon1, flat2, flon2); //TODO: change points
+  float curr_bearing = getBearing(flat0, flon0, flat1, flon1); //TODO: change points
+  float diff = abs(goal_bearing - curr_bearing);
+  float angle;
+
+  if (goal_bearing >= curr_bearing) {
+    if (diff < 180) {
+      angle = diff;
+    } else {
+      angle = -(360 - diff);
+    }
+  } else {
+    if (diff < 180) {
+      angle = -diff;
+    } else {
+      angle = 360 - diff;
+    }
+  }
 
   return angle;
 }
@@ -278,12 +291,12 @@ float getBearing(float lat1, float long1, float lat2, float long2){
   return bearing;
 }
 
-inline float to_degrees(float radians) {
-    float deg = radians * (180.0 / PI);
+float to_degrees(float radians) {
+    float deg = radians * (180.0 / M_PI);
     if (deg < 0){
       deg += 360;
     }
-    return deg;
+    return 360-deg;
 }
 
 float calcDist(float flat1, float flon1, float flat2, float flon2)
@@ -313,4 +326,3 @@ dist_calc*=6371000.0; //Converting to meters
 //Serial.println(dist_calc);
 return dist_calc;
 }
-
