@@ -26,7 +26,7 @@
 
 typedef struct{
     float lat;
-    float long;
+    float lon;
 } latLongStruct;
 
 // hexagon around
@@ -126,7 +126,7 @@ void loop() {
       /*TODO: log the stuff*/
       counter = 0;
       currentPosition.lat = curr_GPS_lat;
-      currentPosition.long = curr_GPS_long;
+      currentPosition.lon = curr_GPS_long;
 
       EEPROM.put(eeprom_addr, currentPosition);
       eeprom_addr += sizeof(currentPosition);

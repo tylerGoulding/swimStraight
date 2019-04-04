@@ -46,7 +46,7 @@ IntervalTimer freqTimer;
 static int finished = 0;
 static int currentStartPos = 0;
 static int currentEndPos = 1;
-static int counter = 0;
+static int updated = 1;
 
 float currentStartLat = 0;
 float currentStartLong = 0;
@@ -54,6 +54,8 @@ float currentEndLat = 0;
 float currentEndLong = 0;
 float curr_GPS_lat = 0;
 float curr_GPS_long = 0;
+
+uint32_t timer = millis();
 
 boolean at_start = false;
 boolean pG = false;
@@ -92,10 +94,11 @@ void loop() {
       return;  // we can fail to parse a sentence in which case we should just wait for another
     }
   }
-//
-//  // first we gotta make sure that the GPS has SATs before we can begin to do anything
+
+  if (timer > millis()) timer = millis();
+
+  // first we gotta make sure that the GPS has SATs before we can begin to do anything
   if (GPS.fix){
-    counter++;
 
     // Latitude conversion
     int GPS_lat_integer = GPS.latitude/100;
@@ -118,35 +121,36 @@ void loop() {
         Serial.println(" meters of start");
       }
     } else {
-      // TODO: implement 'rings' of how often to check if we should update start and end previousPositions
-      //       e.g. if we calculate were 400 meters away from end, we dont need to check if we are 5 meters away every time.
-      //            we dont move that quick, yo
       if (finished){
         Serial.printf("bruh, you are done.");
         exit(0);
       }
       float relative_pos = toMove(curr_GPS_lat, curr_GPS_long);
 
-      if (counter == 10) {
-        counter = 0;
-        Serial.print("Remaining Distance: ");
-        Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
-        if (relative_pos > DELTA_DEGREE) {
-          Serial.print("move right: ");
-          Serial.println(relative_pos);
-
-        } else if (relative_pos < -DELTA_DEGREE) {
-          Serial.print("move left: ");
-          Serial.println(relative_pos);
-
-        } else {
-          Serial.println("on path");
+      if (updated) {
+          timer = millis(); 
+          Serial.print("Remaining Distance: ");
+          Serial.println(calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long));
+          if (relative_pos > DELTA_DEGREE) {
+            Serial.print("move right: ");
+            Serial.println(relative_pos);
+  
+          } else if (relative_pos < -DELTA_DEGREE) {
+            Serial.print("move left: ");
+            Serial.println(relative_pos);
+  
+          } else {
+            Serial.println("on path");
+          }
         }
       }
 
     }
     if (calcDist(previousPositions[2][0], previousPositions[2][1], curr_GPS_lat, curr_GPS_long)< 1) {
       shiftandAddPosition(previousPositions, sizeOfpreviousPositions, curr_GPS_lat, curr_GPS_long);
+      updated = 1;
+    } else {
+      updated = 0;
     }
   } else {
     Serial.println("looking for fix");
