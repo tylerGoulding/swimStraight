@@ -11,7 +11,6 @@
 #define RANGE_RING_2 50
 #define RANGE_RING_3 25
 #define DELTA_DEGREE 2                       //todo
-
 #define ONBOARD_LED 13
 
 
@@ -25,6 +24,8 @@
 */
 
 typedef struct{
+    uint8_t minutes;
+    uint8_t seconds;
     float lat;
     float lon;
 } latLongStruct;
@@ -48,12 +49,13 @@ Adafruit_GPS GPS(&HWSERIAL);
 IntervalTimer myTimer;
 IntervalTimer freqTimer;
 
-
+uint32_t timer = millis();
 static int finished = 0;
 static int currentStartPos = 0;
 static int currentEndPos = 1;
-static int counter = 0;
+//static int counter = 0;
 int eeprom_addr = 0;
+float counter = 0;
 
 latLongStruct currentPosition;
 
@@ -63,13 +65,15 @@ float currentStartLat = 0;
  float currentEndLong = 0;
  float curr_GPS_lat = 0;
  float curr_GPS_long = 0;
+ float prev_GPS_lat = 0;
+ float prev_GPS_long = 0;
 
 boolean at_start = false;
 boolean pG = false;
 void setup() {
   // put your setup code here, to run once:
   pinMode(ONBOARD_LED, OUTPUT);
-  digitalWrite(ONBOARD_LED,low);
+  digitalWrite(ONBOARD_LED,LOW);
 
   Serial.begin(115200);
   delay(1000);
@@ -82,7 +86,7 @@ void setup() {
   Serial.println("Done");
   at_start = false;
 
-  freqTimer.begin(updateStartAndEnd, 20000000);
+//  freqTimer.begin(updateStartAndEnd, 20000000);
 
   /* Lets set current start and end lat,long*/
     Serial.println("getting current lat and long");
@@ -91,55 +95,71 @@ void setup() {
   currentEndLat = currentPath[getLatIndex(currentEndPos)];
   currentEndLong = currentPath[getLongIndex(currentEndPos)];
   Serial.println("Leaving Start");
+  Serial.flush();
 //  delay(5000);
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-//  Serial.println("checking for fix");
 
-//  //int status = GPS.read();
   if (GPS.newNMEAreceived()) {
     if (!GPS.parse(GPS.lastNMEA())){ // this also sets the newNMEAreceived() flag to false
       return;  // we can fail to parse a sentence in which case we should just wait for another
-    }
+    } 
   }
-//
-//  // first we gotta make sure that the GPS has SATs before we can begin to do anything
+
+  if (timer > millis()) timer = millis();
+
   if (GPS.fix){
 
-    counter++;
+    digitalWrite(ONBOARD_LED,HIGH);
+    
     // Latitude conversion
+    prev_GPS_lat = curr_GPS_lat;
     int GPS_lat_integer = GPS.latitude/100;
     float GPS_lat_shifting = GPS.latitude - (GPS_lat_integer * 100);
     float GPS_lat_decimal_conversion = (GPS_lat_shifting / 60);
     curr_GPS_lat = GPS_lat_integer + GPS_lat_decimal_conversion;
 
     // Longitude conversion
+    prev_GPS_long = curr_GPS_long;
     int GPS_long_integer = GPS.longitude/100;
     float GPS_long_shifting = GPS.longitude - (GPS_long_integer * 100);
     float GPS_long_decimal_conversion = (GPS_long_shifting / 60);
     curr_GPS_long = (-1)*(GPS_long_integer + GPS_long_decimal_conversion);
 
-    if ((counter == 10) && (eeprom_addr <= 2048)){
-      /*TODO: log the stuff*/
-      counter = 0;
-      currentPosition.lat = curr_GPS_lat;
-      currentPosition.lon = curr_GPS_long;
-
-      EEPROM.put(eeprom_addr, currentPosition);
-      eeprom_addr += sizeof(currentPosition);
-      if (eeprom_addr >= 2048){
-        digitalWrite(ONBOARD_LED,high);
+    if (millis() - timer > 2000) {
+      timer = millis(); // reset the timer
+      Serial.print("Time: ");
+      Serial.print(GPS.minute); Serial.print('.');
+      Serial.println(GPS.seconds); //Serial.print("  ");
+      if ((eeprom_addr <= 2048)){
+        /*TODO: log the stuff*/
+        currentPosition.minutes = GPS.minute;
+        currentPosition.seconds = GPS.seconds;
+        currentPosition.lat = curr_GPS_lat;
+        currentPosition.lon = curr_GPS_long;
+  
+        EEPROM.put(eeprom_addr, currentPosition);
+        eeprom_addr += sizeof(currentPosition);
+        Serial.println(eeprom_addr);
+        Serial.println(curr_GPS_lat);
+        Serial.println(prev_GPS_lat);
+        //Serial.println(GPS.lastNMEA());
+        Serial.flush();
+        if (eeprom_addr >= 2048){
+          digitalWrite(ONBOARD_LED,LOW);
+          while (1) {}
+        }
       }
     }
-  }
-  else{
-    Serial.println("looking for fix");
-  }
+    }
 
-}
+  }
+//  else{
+//    Serial.println("looking for fix");
+//  }
+
 
 void readGPS(){
   char c = GPS.read();
@@ -151,6 +171,8 @@ void setupGPS(){
   GPS.begin(9600);
   Serial1.begin(9600);
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  //GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+//  GPS.sendCommand(PMTK_API_SET_FIX_CTL_1HZ);
   myTimer.begin(readGPS, 1000);
 return;
 }
