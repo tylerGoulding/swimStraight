@@ -128,6 +128,7 @@ void loop() {
       float relative_pos = toMove(curr_GPS_lat, curr_GPS_long);
 
       if (updated) {
+        if (millis() - timer > 1200) {
           timer = millis(); 
           Serial.print("Remaining Distance: ");
           Serial.println(calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long));
