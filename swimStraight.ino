@@ -62,6 +62,8 @@ boolean pG = false;
 void setup() {
   // put your setup code here, to run once:
   pinMode(ONBOARD_LED, OUTPUT);
+  digitalWrite(ONBOARD_LED,LOW);
+
   Serial.begin(115200);
   delay(1000);
 
@@ -82,6 +84,7 @@ void setup() {
   currentEndLat = currentPath[getLatIndex(currentEndPos)];
   currentEndLong = currentPath[getLongIndex(currentEndPos)];
   Serial.println("Leaving Start");
+  Serial.flush();
 }
 
 void loop() {
@@ -99,6 +102,7 @@ void loop() {
 
   // first we gotta make sure that the GPS has SATs before we can begin to do anything
   if (GPS.fix){
+    digitalWrite(ONBOARD_LED,HIGH);
 
     // Latitude conversion
     int GPS_lat_integer = GPS.latitude/100;
@@ -129,17 +133,16 @@ void loop() {
 
       if (updated) {
         if (millis() - timer > 1200) {
-          timer = millis(); 
+          timer = millis();
           Serial.print("Remaining Distance: ");
           Serial.println(calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long));
           if (relative_pos > DELTA_DEGREE) {
             Serial.print("move right: ");
             Serial.println(relative_pos);
-  
           } else if (relative_pos < -DELTA_DEGREE) {
             Serial.print("move left: ");
             Serial.println(relative_pos);
-  
+
           } else {
             Serial.println("on path");
           }
@@ -147,7 +150,7 @@ void loop() {
       }
 
     }
-    if (calcDist(previousPositions[2][0], previousPositions[2][1], curr_GPS_lat, curr_GPS_long)< 1) {
+    if (calcDist(previousPositions[2][0], previousPositions[2][1], curr_GPS_lat, curr_GPS_long) > 1) {
       shiftandAddPosition(previousPositions, sizeOfpreviousPositions, curr_GPS_lat, curr_GPS_long);
       updated = 1;
     } else {
@@ -169,8 +172,8 @@ void setupGPS(){
   GPS.begin(9600);
   Serial1.begin(9600);
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
-  GPS.sendCommand(PMTK_API_SET_FIX_CTL_1HZ);
+  //GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+//  GPS.sendCommand(PMTK_API_SET_FIX_CTL_1HZ);
   myTimer.begin(readGPS, 1000);
 return;
 }
