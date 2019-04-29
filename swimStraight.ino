@@ -10,6 +10,8 @@
 #define RANGE_RING_3 25
 #define DELTA_DEGREE 1                       //todo
 
+#define RIGHT_LED 11
+#define LEFT_LED 12
 #define ONBOARD_LED 13
 
 
@@ -25,7 +27,8 @@
 
 // hexagon around
 //const float current                                                                                                                                                                                                                                                           Path[] ={40.44306,-79.93847,40.44292,-79.93884,40.4426,-79.93875,40.44262,-79.93834,40.44289,-79.93817,40.44306,-79.93847};
-const float currentPath[] ={40.44385,-79.94635,40.44378,-79.94598};
+//const float currentPath[] ={40.44385,-79.94635,40.44378,-79.94598};
+const float currentPath[] ={40.44573,-79.93652,40.44589,-79.93618,40.44607,-79.93657};
 
 
 const int sizeOfCurrentPath = 6;
@@ -62,8 +65,14 @@ boolean pG = false;
 void setup() {
   // put your setup code here, to run once:
   pinMode(ONBOARD_LED, OUTPUT);
+  pinMode(RIGHT_LED, OUTPUT);
+  pinMode(LEFT_LED, OUTPUT);
   digitalWrite(ONBOARD_LED,LOW);
-
+  digitalWrite(RIGHT_LED,HIGH);
+  digitalWrite(LEFT_LED,HIGH);
+  delay(1000);
+  digitalWrite(RIGHT_LED,LOW);
+  digitalWrite(LEFT_LED,LOW);
   Serial.begin(115200);
   delay(1000);
 
@@ -78,7 +87,7 @@ void setup() {
   freqTimer.begin(updateStartAndEnd, 20000000);
 
   /* Lets set current start and end lat,long*/
-    Serial.println("getting current lat and long");
+  Serial.println("getting current lat and long");
   currentStartLat = currentPath[getLatIndex(currentStartPos)];
   currentStartLong = currentPath[getLongIndex(currentStartPos)];
   currentEndLat = currentPath[getLatIndex(currentEndPos)];
@@ -131,20 +140,34 @@ void loop() {
       }
       float relative_pos = toMove(curr_GPS_lat, curr_GPS_long);
 
-      if (updated) {
+      if (1) {
         if (millis() - timer > 1200) {
           timer = millis();
           Serial.print("Remaining Distance: ");
           Serial.println(calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long));
+          Serial.print("prev_1: ");
+          Serial.printf("%.10f , " ,previousPositions[1][0]); Serial.printf("%.10f\n" ,previousPositions[1][1]);
+          Serial.print("prev_2: ");
+          Serial.printf("%.10f , " ,previousPositions[2][0]); Serial.printf("%.10f\n" ,previousPositions[2][1]);
+          Serial.print("curr: ");
+          Serial.printf("%.10f , " ,curr_GPS_lat); Serial.printf("%.10f\n" ,curr_GPS_long);
+          Serial.print("Distance between curr and previous: ");
+          Serial.println(calcDist(previousPositions[2][0], previousPositions[2][1], curr_GPS_lat, curr_GPS_long));
           if (relative_pos > DELTA_DEGREE) {
             Serial.print("move right: ");
             Serial.println(relative_pos);
+            digitalWrite(RIGHT_LED, HIGH);
+            digitalWrite(LEFT_LED, LOW);  
           } else if (relative_pos < -DELTA_DEGREE) {
             Serial.print("move left: ");
             Serial.println(relative_pos);
+            digitalWrite(LEFT_LED, HIGH); 
+            digitalWrite(RIGHT_LED, LOW);
 
           } else {
             Serial.println("on path");
+            digitalWrite(RIGHT_LED, LOW);
+            digitalWrite(LEFT_LED, LOW);
           }
         }
       }
@@ -208,14 +231,14 @@ void updateStartAndEnd() {
     }
   } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_3) {
     freqTimer.update(2000000);
-    Serial.println("within 25 metres from goal");
+    //Serial.println("within 25 metres from goal");
 
   } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_2) {
     freqTimer.update(5000000);
-    Serial.println("within 50 metres from goal");
+    //Serial.println("within 50 metres from goal");
   } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_1) {
     freqTimer.update(10000000);
-    Serial.println("within 100 metres from goal");
+    //Serial.println("within 100 metres from goal");
   }
 
 }
@@ -251,13 +274,17 @@ inline int getLongIndex(int index){
 */
 void shiftandAddPosition(float **a,int n, float flat, float flong){
 
-  for(int i=0;i<n-1;i++)
-    {
-        a[i][0]=a[i+1][0];
-        a[i][1]=a[i+1][1];
-    }
-    a[n-1][0]=flat;
-    a[n-1][0]=flong;
+//  for(int i=0;i<n-1;i++)
+//    {
+//        a[i][0]=a[i+1][0];
+//        a[i][1]=a[i+1][1];
+//    }
+    a[0][0]= a[1][0];
+    a[0][1]= a[1][1];
+    a[1][0]= a[2][0];
+    a[1][1]= a[2][1];
+    a[2][0]=flat;
+    a[2][1]=flong;
 }
 
 /*************************************************************************
@@ -265,8 +292,8 @@ void shiftandAddPosition(float **a,int n, float flat, float flong){
  *************************************************************************/
 float calcDir(float flat0, float flon0, float flat1, float flon1, float flat2, float flon2) {
 
-  float goal_bearing = getBearing(flat1, flon1, flat2, flon2); //TODO: change points
-  float curr_bearing = getBearing(flat0, flon0, flat1, flon1); //TODO: change points
+  float goal_bearing = getBearing(flat0, flon0, flat2, flon2); //TODO: change points
+  float curr_bearing = getBearing(flat1, flon1, flat0, flon0); //TODO: change points
   float diff = abs(goal_bearing - curr_bearing);
   float angle;
 
