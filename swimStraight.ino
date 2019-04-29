@@ -8,7 +8,7 @@
 #define RANGE_RING_1 100
 #define RANGE_RING_2 50
 #define RANGE_RING_3 25
-#define DELTA_DEGREE 1                       //todo
+#define DELTA_DEGREE 14                       //todo
 
 #define RIGHT_LED 11
 #define LEFT_LED 12
@@ -127,6 +127,16 @@ void loop() {
 
     if (at_start == false) {
       Serial.println(calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long));
+      Serial.print("curr: ");
+      Serial.printf("%.10f , " ,curr_GPS_lat); Serial.printf("%.10f\n" ,curr_GPS_long);
+//      Serial.print("bearing between current and goal: ");
+//      Serial.println(getBearing(curr_GPS_lat, curr_GPS_long, currentEndLat, currentEndLong));
+//      Serial.print("bearing between start and goal: ");
+//      Serial.println(getBearing(currentStartLat, currentStartLong, currentEndLat, currentEndLong));
+//      Serial.print("bearing between current and start: ");
+//      Serial.println(getBearing(curr_GPS_lat, curr_GPS_long, currentStartLat, currentStartLong));
+//      Serial.print("angle to move:");
+//      Serial.println(calcDir(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long, currentEndLat, currentEndLong));
       at_start = toBegin(curr_GPS_lat, curr_GPS_long);
       if (at_start == true){
         Serial.print("we are within ");
@@ -213,7 +223,7 @@ return;
 
 void updateStartAndEnd() {
 
-  if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < MARGIN_RANGE) {
+  if (calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long) < MARGIN_RANGE) {
     /* update interm 'start' values */
     currentStartPos++;
     currentStartLat = currentEndLat;
@@ -229,14 +239,14 @@ void updateStartAndEnd() {
       finished = 1;
       freqTimer.update(20000000);
     }
-  } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_3) {
+  } else if (calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_3) {
     freqTimer.update(2000000);
     //Serial.println("within 25 metres from goal");
 
-  } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_2) {
+  } else if (calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_2) {
     freqTimer.update(5000000);
     //Serial.println("within 50 metres from goal");
-  } else if (calcDist(currentStartLat, currentStartLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_1) {
+  } else if (calcDist(currentEndLat, currentEndLong, curr_GPS_lat, curr_GPS_long) < RANGE_RING_1) {
     freqTimer.update(10000000);
     //Serial.println("within 100 metres from goal");
   }
@@ -255,11 +265,16 @@ float toMove(float curr_lat, float curr_long) {
   //populate array of current two points, not sure how we'll keep track yet
 
   // benefits of fixed size arrays
-  float oldPositionLat = (previousPositions[0][0]+previousPositions[1][0]+previousPositions[2][0])/3;
-  float oldPositionLong = (previousPositions[0][1]+previousPositions[1][1]+previousPositions[2][1])/3;
+  //float oldPositionLat = (previousPositions[0][0]);//+previousPositions[1][0]+previousPositions[2][0])/3;
+  //float oldPositionLong = (previousPositions[0][1]);//+previousPositions[1][1]+previousPositions[2][1])/3;
 
-  float angle = calcDir(curr_lat, curr_long, oldPositionLat, oldPositionLong,
+  float angle_1 = calcDir(curr_lat, curr_long, previousPositions[0][0], previousPositions[0][1],
    currentEndLat, currentEndLong);
+  float angle_2 = calcDir(curr_lat, curr_long, previousPositions[1][0], previousPositions[1][1],
+   currentEndLat, currentEndLong);
+  float angle_3 = calcDir(curr_lat, curr_long, previousPositions[2][0], previousPositions[2][1],
+   currentEndLat, currentEndLong);
+  float angle = (angle_1 + angle_2 + angle_3)/3.0;
    return angle;
 }
 
